@@ -1,6 +1,6 @@
 # flessen-teller
 
-Eenvoudige webapp in PHP, JS, HTML en CSS om flessen te tellen op basis van motion-events van een Arduino.
+Eenvoudige webapp in PHP, JS, HTML en CSS om flessen te tellen op basis van afstandsverandering van een Arduino + ultrasone sensor.
 
 ## Starten
 
@@ -16,28 +16,39 @@ php -S localhost:8000
 http://localhost:8000/index.php
 ```
 
-## Arduino koppeling
+## Werking
 
-- Klik op **Verbind met Arduino**.
-- Kies de seriele poort van je board.
-- Stuur in je Arduino sketch per detectie een regel met bijvoorbeeld `MOTION`, `DETECTED` of `1`.
+1. Arduino meet afstand met HC-SR04.
+2. Bij een grote afstandsverandering stuurt Arduino `BOTTLE` via USB serial.
+3. `bridge.py` leest serial en roept `api.php` aan met `add=1`.
+4. De webpagina pollt elke seconde en laat de nieuwe tellerstand direct zien.
 
-Voorbeeld in Arduino C++:
+## Arduino uploaden
 
-```cpp
-void setup() {
-	Serial.begin(9600);
-}
+- Open [arduino/bottle_distance_detector.ino](arduino/bottle_distance_detector.ino) in de Arduino IDE.
+- Upload naar je Arduino Uno.
+- Baudrate in sketch is `9600`.
 
-void loop() {
-	// Vervang dit met jouw eigen motion sensor check.
-	bool motionDetected = false;
+## Bridge script starten
 
-	if (motionDetected) {
-		Serial.println("MOTION");
-		delay(1200); // simpele debounce
-	}
-}
+1. Installeer Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Start de bridge (Linux voorbeeld):
+
+```bash
+python3 bridge.py --port /dev/ttyACM0 --api-url http://localhost:8000/api.php
+```
+
+Als jouw board op een andere poort zit, pas `--port` aan.
+
+Windows voorbeeld:
+
+```bash
+python bridge.py --port COM3 --api-url http://localhost:8000/api.php
 ```
 
 ## Opslag

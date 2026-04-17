@@ -1,16 +1,14 @@
 const countEl = document.getElementById("count");
-const serialStatusEl = document.getElementById("serialStatus");
+const bridgeStatusEl = document.getElementById("bridgeStatus");
 const lastEventEl = document.getElementById("lastEvent");
 
-const connectSerialBtn = document.getElementById("connectSerialBtn");
 const testEventBtn = document.getElementById("testEventBtn");
 const resetBtn = document.getElementById("resetBtn");
 
 let lastMotionAt = 0;
 const eventCooldownMs = 1200;
-
-// regels van de arduino die tellen als gedetecteerde fles
-const MOTION_TOKENS = ["MOTION", "DETECTED", "1"];
+const pollIntervalMs = 1000;
+let latestCount = 0;
 
 // helper om php api acties aan te roepen
 async function api(action) {
@@ -28,7 +26,8 @@ async function api(action) {
 async function loadCount() {
   const response = await fetch("api.php?action=get");
   const data = await response.json();
-  updateCount(data.count ?? 0);
+  latestCount = data.count ?? 0;
+  updateCount(latestCount);
 }
 
 function updateCount(value) {
@@ -64,7 +63,8 @@ async function registerBottle(source) {
 
   try {
     const data = await api("increment");
-    updateCount(data.count ?? 0);
+    latestCount = data.count ?? 0;
+    updateCount(latestCount);
     updateLastEvent(`Laatste event: ${source} om ${formatNow()}`);
   } catch (error) {
     updateLastEvent(`Fout bij tellen: ${error.message}`);
@@ -74,56 +74,41 @@ async function registerBottle(source) {
 async function resetCounter() {
   try {
     const data = await api("reset");
-    updateCount(data.count ?? 0);
+    latestCount = data.count ?? 0;
+    updateCount(latestCount);
     updateLastEvent("Teller gereset.");
   } catch (error) {
     updateLastEvent(`Reset mislukt: ${error.message}`);
   }
 }
 
-async function connectSerial() {
-  if (!("serial" in navigator)) {
-    serialStatusEl.textContent = "Seriele status: Web Serial wordt niet ondersteund in deze browser.";
-    return;
-  }
-
+async function syncCountFromServer() {
   try {
-    const port = await navigator.serial.requestPort();
-    await port.open({ baudRate: 9600 });
-    serialStatusEl.textContent = "Seriele status: verbonden met Arduino.";
-
-    const decoder = new TextDecoder();
-    let buffer = "";
-    const reader = port.readable.getReader();
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) {
-        break;
-      }
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop() || "";
-
-      // verwerk complete seriele regels en reageer op motion tokens
-      for (const rawLine of lines) {
-        const line = rawLine.trim().toUpperCase();
-        if (MOTION_TOKENS.some((token) => line.includes(token))) {
-          await registerBottle("motion sensor");
-        }
-      }
+    const response = await fetch("api.php?action=get");
+    if (!response.ok) {
+      throw new Error(`API fout (${response.status})`);
     }
+
+    const data = await response.json();
+    const serverCount = data.count ?? 0;
+
+    if (serverCount !== latestCount) {
+      latestCount = serverCount;
+      updateCount(latestCount);
+      updateLastEvent(`Nieuwe fles gedetecteerd via bridge om ${formatNow()}`);
+    }
+
+    bridgeStatusEl.textContent = "Bridge status: verbonden (live updates actief).";
   } catch (error) {
-    serialStatusEl.textContent = `Seriele status: fout (${error.message}).`;
+    bridgeStatusEl.textContent = `Bridge status: geen verbinding (${error.message}).`;
   }
 }
 
-// koppel knoppen na het laden van het script
-connectSerialBtn.addEventListener("click", connectSerial);
 testEventBtn.addEventListener("click", () => registerBottle("testknop"));
 resetBtn.addEventListener("click", resetCounter);
 
 loadCount().catch((error) => {
   updateLastEvent(`Kon teller niet laden: ${error.message}`);
 });
+
+setInterval(syncCountFromServer, pollIntervalMs);

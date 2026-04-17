@@ -9,29 +9,28 @@
 <body>
   <main class="page">
     <section class="card hero">
-      <p class="kicker">Motion Sensor + Arduino</p>
+      <p class="kicker">Arduino + USB Bridge + PHP</p>
       <h1>Flessen Teller</h1>
       <p class="subtitle">
-        Deze pagina telt flessen wanneer je sensor een beweging meldt.
+        Deze pagina telt automatisch op zodra je bridge script een fles-detectie doorstuurt.
       </p>
     </section>
 
     <section class="card counter-card">
       <p class="label">Totaal getelde flessen</p>
       <p id="count" class="count">0</p>
-      <p id="lastEvent" class="meta">Nog geen events ontvangen.</p>
+      <p id="lastEvent" class="meta">Wachten op nieuwe fles-detecties.</p>
     </section>
 
     <section class="card controls">
       <h2>Besturing</h2>
       <div class="button-grid">
-        <button id="connectSerialBtn" class="btn btn-primary" type="button">Verbind met Arduino</button>
         <button id="testEventBtn" class="btn" type="button">Test: simuleer fles</button>
         <button id="resetBtn" class="btn btn-danger" type="button">Reset teller</button>
       </div>
-      <p id="serialStatus" class="meta">Seriele status: niet verbonden.</p>
+      <p id="bridgeStatus" class="meta">Bridge status: run bridge.py op je computer om events door te sturen.</p>
       <p class="hint">
-        Verwachte seriele berichten: <strong>MOTION</strong>, <strong>DETECTED</strong> of <strong>1</strong> op een aparte regel.
+        Verwachte Arduino seriele regel naar bridge: <strong>BOTTLE</strong>.
       </p>
     </section>
   </main>

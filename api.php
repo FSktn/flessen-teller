@@ -4,6 +4,7 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 
 $action = $_GET['action'] ?? '';
+$add = $_POST['add'] ?? null;
 $dataDir = __DIR__ . '/data';
 $dataFile = $dataDir . '/counter.json';
 
@@ -42,6 +43,26 @@ function writeCount(string $filePath, int $count): bool
     }
 
     return file_put_contents($filePath, $payload, LOCK_EX) !== false;
+}
+
+// compatibele route voor bridge scripts die POST add=1 sturen zonder action
+if ($add !== null) {
+    $incrementBy = (int) $add;
+    if ($incrementBy <= 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Waarde voor add moet groter dan 0 zijn']);
+        exit;
+    }
+
+    $count = readCount($dataFile) + $incrementBy;
+    if (!writeCount($dataFile, $count)) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Kon teller niet opslaan']);
+        exit;
+    }
+
+    echo json_encode(['count' => $count]);
+    exit;
 }
 
 switch ($action) {
